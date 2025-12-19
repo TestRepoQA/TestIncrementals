@@ -6,20 +6,27 @@ class WeakShiftXORHash:
     DO NOT use in production.
     """
 
-    def __init__(self, salt: str = "123"):
-        # Fixed, short salt → still weak
-        self.salt = salt
+    def __init__(self):
+        # Static, tiny pepper → weak on purpose
+        self.pepper = 0x33
 
     def weak_hash(self, data: str) -> str:
         """
-        Insecure hashing using shift, XOR and SHA-1.
+        Insecure hashing using rotate, XOR and truncated MD5.
         """
-        transformed = ''.join(
-            chr(((ord(c) << 1) ^ 0x55) & 0xFF)
-            for c in (data + self.salt)
-        )
+        transformed_bytes = bytearray()
 
-        return hashlib.sha1(transformed.encode("utf-8")).hexdigest()
+        for c in data:
+            v = ord(c)
+            # rotate left by 1 (8-bit), then XOR
+            v = ((v << 1) | (v >> 7)) & 0xFF
+            v ^= self.pepper
+            transformed_bytes.append(v)
+
+        digest = hashlib.md5(bytes(transformed_bytes)).hexdigest()
+
+        # Truncate hash → even weaker
+        return digest[:16]
 
 
 if __name__ == "__main__":
